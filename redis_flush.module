@@ -19,10 +19,16 @@ function redis_cache_flush() {
   $redis_flush_settings = Settings::get('redis_flush');
   $redis_connection_settings = Settings::get('redis.connection');
 
+  // if a redis connection is not configured, abort
   if (empty($redis_connection_settings)) {
     return;
   }
 
+  if (empty($redis_flush_settings)) {
+    $redis_flush_settings = array();
+  }
+
+  // default settings if none were provided in settings.php
   $redis_flush_settings += array(
     'mode'      => 'bin',
     'skip_bins' => array(),
@@ -30,7 +36,7 @@ function redis_cache_flush() {
 
   $redis_base_index = !isset($redis_connection_settings['base']) ? 0 : $redis_connection_settings['base'];
 
-  // allow non-default (0) instance DB to be flushed
+  // allow for non-default (0) instance DB to be flushed
   if (isset($redis_base_index) &&
       is_numeric($redis_base_index) &&
       $redis_base_index >= 0 &&

@@ -16,6 +16,7 @@ As the name implies, this mode is intended for development use only as it will d
 The second flush (the default) is safer as it separates the deletes into batches by cache bin:
 
 ```php
+$settings['redis.connection']['base'] = 0;
 $settings['redis_flush']['mode'] = 'bin'
 ```
 
