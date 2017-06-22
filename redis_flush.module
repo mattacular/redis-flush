@@ -1,0 +1,83 @@
+<?php
+use Drupal\redis\ClientFactory;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Site\Settings;
+
+/**
+ *  Implements hook_cache_flush()
+ *    Empties all Drupal cache from a Redis DB instance upon cache flush
+ *    action (ie. when running `drush cache-rebuild`)
+ */
+function redis_cache_flush() {
+  // ensure that we are connected to Redis and can get a reference to the active client before proceeding
+  if (!ClientFactory::hasClient() ||
+      !$redis = ClientFactory::getClient()) {
+
+    return;
+  }
+
+  $redis_flush_settings = Settings::get('redis_flush');
+  $redis_connection_settings = Settings::get('redis.connection');
+
+  // if a redis connection is not configured, abort
+  if (empty($redis_connection_settings)) {
+    return;
+  }
+
+  if (empty($redis_flush_settings)) {
+    $redis_flush_settings = array();
+  }
+
+  // default settings if none were provided in settings.php
+  $redis_flush_settings += array(
+    'mode'      => 'bin',
+    'skip_bins' => array(),
+  );
+
+  $redis_base_index = !isset($redis_connection_settings['base']) ? 0 : $redis_connection_settings['base'];
+
+  // allow for non-default (0) instance DB to be flushed
+  if (isset($redis_base_index) &&
+      is_numeric($redis_base_index) &&
+      $redis_base_index >= 0 &&
+      $redis_base_index <= 16) { // Redis instance supports up to 16 DBs
+
+    $redis->select($redis_base_index);
+  }
+
+  // @see README for more details on the flush modes
+  switch ($redis_flush_settings['mode']) {
+  case 'develop':
+    // using flushDb() instead of flushAll() since the Redis Module only supports 1 database for
+    // Drupal cache at this time
+    $redis->flushDb();
+
+    break;
+  case 'bin':
+    $redis->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
+    $flush_keys = array();
+    $cache_prefix = Settings::get('cache_prefix');
+
+    // checksum, lock, and queue are not cache bins so we do not need any logic to skip them
+    foreach (Cache::getBins() as $bin => $cache_interface) {
+      $iterator = NULL; // reset the SCAN iterator for each bin
+      $keys = array();
+
+      if (get_class($cache_interface) !== 'Drupal\redis\Cache\PhpRedis' ||
+          in_array($bin, $redis_flush_settings['skip_bins'])) {
+
+        continue;
+      }
+
+      // use SCAN to locate the keys for this bin (https://redis.io/commands/scan)
+      while ($arr_keys = $redis->scan($iterator, "${cache_prefix}:${bin}:*")) {
+        foreach ($arr_keys as $str_key) {
+          $keys[] = $str_key;
+        }
+      }
+
+      // delete the keys found for this bin
+      $redis->delete($keys);
+    }
+  }
+}

@@ -1,0 +1,7 @@
+name: Redis Flush
+description: Provides robust cache flush support for the Redis module
+package: Performance
+type: module
+core: 8.x
+dependencies:
+    - redis
