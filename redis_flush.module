@@ -1,0 +1,65 @@
+<?php
+/**
+flush by bin:
+
+use Drupal\redis\ClientFactory;
+use Drupal\Core\Cache\Cache;
+$redis = ClientFactory::getClient();
+
+$redis->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
+$keys = [];
+
+foreach (Cache::getBins() as $bin => $cacheInterface) {
+ $iterator = NULL;
+  $keys = [];
+ if (get_class($cacheInterface) !== 'Drupal\redis\Cache\PhpRedis') {
+   kint('continue past', $bin);
+    continue;
+  }
+
+ while ($arr_keys = $redis->scan($iterator, "casa_local:${bin}:*")) {
+    foreach ($arr_keys as $str_key) {
+       $keys[] = $str_key;
+    }
+  }
+
+  $redis->delete($keys);
+}
+
+kint($iterator, $keys);
+*/
+
+/**
+flush by db index
+
+/**
+ *  Implements hook_cache_flush()
+ *    Empties all Drupal cache from a Redis DB instance upon cache flush
+ *    action such as running `drush cache-rebuild`
+ */
+function redis_cache_flush() {
+  // ensure that we are connected to Redis and can reference the active client before proceeding
+  if (!ClientFactory::hasClient() ||
+      !$redis = ClientFactory::getClient()) {
+
+    return;
+  }
+
+  $redis_connection_settings = \Drupal\Core\Site\Settings::get('redis.connection');
+  $redis_base_index = $redis_connection_settings['base'] ?? 0;
+
+  drupal_set_message('Prepping for Redis flush of db = ' . $redis_base_index);
+
+  // allow non-default (0) instance DB to be flushed
+  if (isset($redis_base_index) &&
+      is_numeric($redis_base_index) &&
+      $redis_base_index >= 0 &&
+      $redis_base_index <= 16) { // Redis instance supports up to 16 DBs
+
+    $redis->select($redis_base_index);
+  }
+
+  // using flushDb() instead of flushAll() since for Drupal cache we are only using 1 database
+  // per Redis instance at this time
+  $redis->flushDb();
+}
