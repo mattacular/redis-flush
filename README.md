@@ -3,7 +3,7 @@ Submodule for [Drupal Redis](https://www.drupal.org/project/redis) to add
 robust cache flush support.
 
 This module is designed for Drupal sites that use a single Redis instance or at
-least a single Redis DB (1-16) for all Drupal cache information.
+least a single Redis DB (0-16) for all Drupal cache information.
 
 ## Flush Modes
 There are two flush modes. The first simply issues a
