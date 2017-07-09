@@ -21,7 +21,7 @@ destroy lock and queue information and other potentially critical cache keys
 that could cause issues if flushed at the wrong time in production. If you are
 not using Redis for such purposes though, it may be safe but is not recommended.
 
-The second flush (the default) is safer as it separates the deletes into
+The second flush (the default mode) is safer as it separates the deletes into
 batches by cache bin:
 
 ```php
@@ -46,6 +46,12 @@ unless you have a particularly large bin. This mode is designed for production
 usage but it is always recommended to put your site in maintenance mode before
 performing a cache rebuild regardless of whether you are using Redis or this
 module.
+
+**Note:** You may also disable flush while leaving the module installed like so:
+
+```php
+$settings['redis_flush']['mode'] = false;
+```
 
 **Warning:** An especially large cache store may cause a slow-down
 (ie. block Redis) even using this default bin-based delete mode.

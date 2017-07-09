@@ -13,7 +13,8 @@ use Drupal\Core\Site\Settings;
  * Implements hook_cache_flush().
  *
  *    Empties all Drupal cache from a Redis DB instance upon cache flush
- *    action (ie. when running `drush cache-rebuild`)
+ *    action (ie. when running `drush cache-rebuild`). Supports several
+ *    flush modes. @see README.md for more details.
  */
 function redis_cache_flush() {
   // Ensure that we are connected to Redis and can get a reference to.
@@ -34,6 +35,8 @@ function redis_cache_flush() {
 
   if (empty($redis_flush_settings)) {
     $redis_flush_settings = [];
+  } elseif ($redis_flush_settings['mode'] === false) {
+    return;
   }
 
   // Default settings if none were provided in settings.php.
